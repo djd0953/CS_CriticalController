@@ -16,18 +16,31 @@ namespace CriticalControl
         public WB_EQUIP_VO vo = new WB_EQUIP_VO();
 
         public int level;
-        public bool doBroadCast;
-        public bool doGateClose;
+        public bool broadCasting;
+        public bool gateControl;
+        public bool gateClose;
 
-        public ExcuteEquip(WB_EQUIP_VO vo, int level, bool broadcastBool = true, bool gateCloseBool = true)
+        public ExcuteEquip(WB_EQUIP_VO vo, int level, bool starting = true)
         {
             //TODO: vo.Data에 해당 장비를 동작시킬지 True or False를 String으로 받아 실행 or (방송, 차단기) 동작 여부를 변수로 받아 실행
             this.level = level;
             this.vo = vo;
-            this.doBroadCast = broadcastBool;
-            this.doGateClose = gateCloseBool;
 
-            Alert();
+            doBroadCasting(true);
+            doGateControl(true, true);
+
+            if (starting) Alert();
+        }
+
+        public void doBroadCasting(bool broadCast)
+        {
+            this.broadCasting = broadCast;
+        }
+
+        public void doGateControl(bool gateControl, bool gateClose = true)
+        {
+            this.gateControl = gateControl;
+            this.gateClose = gateClose;
         }
 
         public void Alert()
@@ -71,7 +84,7 @@ namespace CriticalControl
 
         public void BroadCast()
         {
-            if (level < 1 || doBroadCast == false)
+            if (level < 1 || broadCasting == false)
             {
                 return;
             }
@@ -114,13 +127,18 @@ namespace CriticalControl
 
         public void Gate()
         {
+            if (gateControl == false)
+            {
+                return;
+            }
+
             using (MYSQL_T mysql = new MYSQL_T(db_local_conf))
             {
                 WB_GATECONTROL_DAO gate_dao = new WB_GATECONTROL_DAO(mysql);
                 WB_GATECONTROL_VO gate_vo = new WB_GATECONTROL_VO()
                 {
                     Cd_dist_obsv = vo.Cd_dist_obsv,
-                    Gate = level > 0 && doGateClose ? "close" : "open",
+                    Gate = level > 0 && gateClose ? "close" : "open",
                     GStatus = "start",
                     RegDate = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")
                 };
@@ -136,12 +154,13 @@ namespace CriticalControl
 
         public WB_ISUMENT_VO ment_vo = new WB_ISUMENT_VO();
         public WB_SMSUSER_VO vo = new WB_SMSUSER_VO();
+        public string phone;
         public int level;
 
-        public SendSMS(WB_SMSUSER_VO vo, int level)
+        public SendSMS(string phone, int level)
         {
             this.level = level;
-            this.vo = vo;
+            this.phone = phone;
 
             SMS();
         }
@@ -155,10 +174,20 @@ namespace CriticalControl
 
             using (MYSQL_T mysql = new MYSQL_T(db_local_conf))
             {
+                WB_ISUMENT_DAO ment_dao = new WB_ISUMENT_DAO(mysql);
+                ment_dao.Create();
+
+                ment_vo = ment_dao.Select("MentCode = 1").FirstOrDefault();
+                if (ment_vo == null)
+                {
+                    ment_dao.Insert("INSERT INTO wb_isument (MentCode) VALUES (1)");
+                    ment_vo = ment_dao.Select("MentCode = 1").FirstOrDefault();
+                }
+
                 WB_SENDMESSAGE_DAO smssend_dao = new WB_SENDMESSAGE_DAO(mysql);
                 WB_SENDMESSAGE_VO smssend_vo = new WB_SENDMESSAGE_VO()
                 {
-                    PhoneNum = vo.Phone,
+                    PhoneNum = phone,
                     SendMessage = ment_vo.SMSMent[level] ?? $"경보 {level}단계 문자 발송 테스트 중 입니다",
                     SendStatus = "start",
                     RegDate = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")

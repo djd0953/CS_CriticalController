@@ -103,6 +103,7 @@
             this.configButton.TabStop = false;
             this.configButton.Text = "Config ▷";
             this.configButton.UseVisualStyleBackColor = true;
+            this.configButton.Click += new System.EventHandler(this.On_Click_Config);
             // 
             // clockPanel
             // 
@@ -151,6 +152,7 @@
             this.mainButton.Name = "mainButton";
             this.mainButton.Size = new System.Drawing.Size(83, 40);
             this.mainButton.Text = "메인화면";
+            this.mainButton.Click += new System.EventHandler(this.On_Click_Page);
             // 
             // eventButton
             // 
@@ -161,6 +163,7 @@
             this.eventButton.Name = "eventButton";
             this.eventButton.Size = new System.Drawing.Size(83, 40);
             this.eventButton.Text = "전송이력";
+            this.eventButton.Click += new System.EventHandler(this.On_Click_Page);
             // 
             // settingButton
             // 
@@ -174,24 +177,28 @@
             this.settingButton.Name = "settingButton";
             this.settingButton.Size = new System.Drawing.Size(59, 40);
             this.settingButton.Text = "설정";
+            this.settingButton.Click += new System.EventHandler(this.On_Click_Page);
             // 
             // settingButton_system
             // 
             this.settingButton_system.Name = "settingButton_system";
-            this.settingButton_system.Size = new System.Drawing.Size(120, 22);
+            this.settingButton_system.Size = new System.Drawing.Size(180, 22);
             this.settingButton_system.Text = "SYSTEM";
+            this.settingButton_system.Click += new System.EventHandler(this.On_Click_Page);
             // 
             // settingButton_db
             // 
             this.settingButton_db.Name = "settingButton_db";
-            this.settingButton_db.Size = new System.Drawing.Size(120, 22);
+            this.settingButton_db.Size = new System.Drawing.Size(180, 22);
             this.settingButton_db.Text = "DB";
+            this.settingButton_db.Click += new System.EventHandler(this.On_Click_Page);
             // 
             // settingButton_device
             // 
             this.settingButton_device.Name = "settingButton_device";
-            this.settingButton_device.Size = new System.Drawing.Size(120, 22);
+            this.settingButton_device.Size = new System.Drawing.Size(180, 22);
             this.settingButton_device.Text = "DEVICE";
+            this.settingButton_device.Click += new System.EventHandler(this.On_Click_Page);
             // 
             // testButton
             // 
@@ -201,6 +208,7 @@
             this.testButton.Name = "testButton";
             this.testButton.Size = new System.Drawing.Size(71, 40);
             this.testButton.Text = "테스트";
+            this.testButton.Click += new System.EventHandler(this.On_Click_Page);
             // 
             // helpButton
             // 
@@ -210,6 +218,7 @@
             this.helpButton.Name = "helpButton";
             this.helpButton.Size = new System.Drawing.Size(71, 40);
             this.helpButton.Text = "도움말";
+            this.helpButton.Click += new System.EventHandler(this.On_Click_Page);
             // 
             // titlePanel
             // 

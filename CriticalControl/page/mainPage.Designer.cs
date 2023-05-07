@@ -38,12 +38,7 @@
             this.runInterval = new System.Windows.Forms.ComboBox();
             this.runMode_auto = new System.Windows.Forms.RadioButton();
             this.runPanel = new System.Windows.Forms.TableLayoutPanel();
-            this.groupDataGridView = new System.Windows.Forms.DataGridView();
-            this.process_timer = new System.Windows.Forms.Timer(this.components);
-            this.bottomPanel = new System.Windows.Forms.Panel();
-            this.progressBar = new System.Windows.Forms.ProgressBar();
-            this.dataBindingSource = new System.Windows.Forms.BindingSource(this.components);
-            this.dataBindingSource_group = new System.Windows.Forms.BindingSource(this.components);
+            this.dataGridView = new System.Windows.Forms.DataGridView();
             this.gCodeDataGridViewTextBoxColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.gNameDataGridViewTextBoxColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.AltName = new System.Windows.Forms.DataGridViewTextBoxColumn();
@@ -52,13 +47,16 @@
             this.nowDataDataGridViewTextBoxColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.altDateDataGridViewTextBoxColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.nowLevelDataGridViewTextBoxColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.dataBindingSource = new System.Windows.Forms.BindingSource(this.components);
+            this.process_timer = new System.Windows.Forms.Timer(this.components);
+            this.bottomPanel = new System.Windows.Forms.Panel();
+            this.progressBar = new System.Windows.Forms.ProgressBar();
             this.groupBox1.SuspendLayout();
             this.TopPanel.SuspendLayout();
             this.runPanel.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.groupDataGridView)).BeginInit();
-            this.bottomPanel.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.dataGridView)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.dataBindingSource)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.dataBindingSource_group)).BeginInit();
+            this.bottomPanel.SuspendLayout();
             this.SuspendLayout();
             // 
             // groupBox1
@@ -118,6 +116,7 @@
             this.runMode_manual.TabStop = true;
             this.runMode_manual.Text = "수동";
             this.runMode_manual.UseVisualStyleBackColor = true;
+            this.runMode_manual.CheckedChanged += new System.EventHandler(this.On_Checked_RunMode);
             // 
             // runInterval
             // 
@@ -144,12 +143,13 @@
             this.runMode_auto.TabStop = true;
             this.runMode_auto.Text = "자동";
             this.runMode_auto.UseVisualStyleBackColor = true;
+            this.runMode_auto.CheckedChanged += new System.EventHandler(this.On_Checked_RunMode);
             // 
             // runPanel
             // 
             this.runPanel.ColumnCount = 1;
             this.runPanel.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
-            this.runPanel.Controls.Add(this.groupDataGridView, 0, 0);
+            this.runPanel.Controls.Add(this.dataGridView, 0, 0);
             this.runPanel.Dock = System.Windows.Forms.DockStyle.Fill;
             this.runPanel.Location = new System.Drawing.Point(5, 45);
             this.runPanel.Margin = new System.Windows.Forms.Padding(0);
@@ -159,14 +159,14 @@
             this.runPanel.Size = new System.Drawing.Size(390, 350);
             this.runPanel.TabIndex = 1;
             // 
-            // groupDataGridView
+            // dataGridView
             // 
-            this.groupDataGridView.AllowUserToAddRows = false;
-            this.groupDataGridView.AllowUserToDeleteRows = false;
-            this.groupDataGridView.AllowUserToOrderColumns = true;
-            this.groupDataGridView.AllowUserToResizeRows = false;
-            this.groupDataGridView.AutoGenerateColumns = false;
-            this.groupDataGridView.AutoSizeColumnsMode = System.Windows.Forms.DataGridViewAutoSizeColumnsMode.Fill;
+            this.dataGridView.AllowUserToAddRows = false;
+            this.dataGridView.AllowUserToDeleteRows = false;
+            this.dataGridView.AllowUserToOrderColumns = true;
+            this.dataGridView.AllowUserToResizeRows = false;
+            this.dataGridView.AutoGenerateColumns = false;
+            this.dataGridView.AutoSizeColumnsMode = System.Windows.Forms.DataGridViewAutoSizeColumnsMode.Fill;
             dataGridViewCellStyle1.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleCenter;
             dataGridViewCellStyle1.BackColor = System.Drawing.SystemColors.Control;
             dataGridViewCellStyle1.Font = new System.Drawing.Font("맑은 고딕", 8F);
@@ -174,8 +174,8 @@
             dataGridViewCellStyle1.SelectionBackColor = System.Drawing.SystemColors.Control;
             dataGridViewCellStyle1.SelectionForeColor = System.Drawing.SystemColors.ControlText;
             dataGridViewCellStyle1.WrapMode = System.Windows.Forms.DataGridViewTriState.False;
-            this.groupDataGridView.ColumnHeadersDefaultCellStyle = dataGridViewCellStyle1;
-            this.groupDataGridView.Columns.AddRange(new System.Windows.Forms.DataGridViewColumn[] {
+            this.dataGridView.ColumnHeadersDefaultCellStyle = dataGridViewCellStyle1;
+            this.dataGridView.Columns.AddRange(new System.Windows.Forms.DataGridViewColumn[] {
             this.gCodeDataGridViewTextBoxColumn,
             this.gNameDataGridViewTextBoxColumn,
             this.AltName,
@@ -184,7 +184,7 @@
             this.nowDataDataGridViewTextBoxColumn,
             this.altDateDataGridViewTextBoxColumn,
             this.nowLevelDataGridViewTextBoxColumn});
-            this.groupDataGridView.DataSource = this.dataBindingSource;
+            this.dataGridView.DataSource = this.dataBindingSource;
             dataGridViewCellStyle2.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleCenter;
             dataGridViewCellStyle2.BackColor = System.Drawing.SystemColors.Window;
             dataGridViewCellStyle2.Font = new System.Drawing.Font("맑은 고딕", 8F);
@@ -192,53 +192,21 @@
             dataGridViewCellStyle2.SelectionBackColor = System.Drawing.SystemColors.HighlightText;
             dataGridViewCellStyle2.SelectionForeColor = System.Drawing.SystemColors.ControlText;
             dataGridViewCellStyle2.WrapMode = System.Windows.Forms.DataGridViewTriState.False;
-            this.groupDataGridView.DefaultCellStyle = dataGridViewCellStyle2;
-            this.groupDataGridView.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.groupDataGridView.EditMode = System.Windows.Forms.DataGridViewEditMode.EditProgrammatically;
-            this.groupDataGridView.Location = new System.Drawing.Point(3, 3);
-            this.groupDataGridView.MultiSelect = false;
-            this.groupDataGridView.Name = "groupDataGridView";
-            this.groupDataGridView.ReadOnly = true;
-            this.groupDataGridView.RowHeadersVisible = false;
-            this.groupDataGridView.RowTemplate.Height = 23;
-            this.groupDataGridView.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
-            this.groupDataGridView.Size = new System.Drawing.Size(384, 344);
-            this.groupDataGridView.TabIndex = 0;
-            this.groupDataGridView.DataBindingComplete += new System.Windows.Forms.DataGridViewBindingCompleteEventHandler(this.DataGridView_DataBindingComplete);
-            this.groupDataGridView.DataError += new System.Windows.Forms.DataGridViewDataErrorEventHandler(this.DataGridView_DataError);
-            this.groupDataGridView.SelectionChanged += new System.EventHandler(this.DataGridView_SelectionChanged);
-            // 
-            // process_timer
-            // 
-            this.process_timer.Interval = 1000;
-            this.process_timer.Tick += new System.EventHandler(this.On_Process_Timer);
-            // 
-            // bottomPanel
-            // 
-            this.bottomPanel.Controls.Add(this.progressBar);
-            this.bottomPanel.Dock = System.Windows.Forms.DockStyle.Bottom;
-            this.bottomPanel.Location = new System.Drawing.Point(5, 385);
-            this.bottomPanel.Name = "bottomPanel";
-            this.bottomPanel.Padding = new System.Windows.Forms.Padding(3);
-            this.bottomPanel.Size = new System.Drawing.Size(390, 10);
-            this.bottomPanel.TabIndex = 2;
-            // 
-            // progressBar
-            // 
-            this.progressBar.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.progressBar.Location = new System.Drawing.Point(3, 3);
-            this.progressBar.Maximum = 60;
-            this.progressBar.Name = "progressBar";
-            this.progressBar.Size = new System.Drawing.Size(384, 4);
-            this.progressBar.TabIndex = 0;
-            // 
-            // dataBindingSource
-            // 
-            this.dataBindingSource.DataSource = typeof(wLib.DB.WB_ISUALERTVIEW_VO);
-            // 
-            // dataBindingSource_group
-            // 
-            this.dataBindingSource_group.DataSource = typeof(wLib.DB.WB_ISUALERTGROUP_VO);
+            this.dataGridView.DefaultCellStyle = dataGridViewCellStyle2;
+            this.dataGridView.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.dataGridView.EditMode = System.Windows.Forms.DataGridViewEditMode.EditProgrammatically;
+            this.dataGridView.Location = new System.Drawing.Point(3, 3);
+            this.dataGridView.MultiSelect = false;
+            this.dataGridView.Name = "dataGridView";
+            this.dataGridView.ReadOnly = true;
+            this.dataGridView.RowHeadersVisible = false;
+            this.dataGridView.RowTemplate.Height = 23;
+            this.dataGridView.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
+            this.dataGridView.Size = new System.Drawing.Size(384, 344);
+            this.dataGridView.TabIndex = 0;
+            this.dataGridView.DataBindingComplete += new System.Windows.Forms.DataGridViewBindingCompleteEventHandler(this.DataGridView_DataBindingComplete);
+            this.dataGridView.DataError += new System.Windows.Forms.DataGridViewDataErrorEventHandler(this.DataGridView_DataError);
+            this.dataGridView.SelectionChanged += new System.EventHandler(this.DataGridView_SelectionChanged);
             // 
             // gCodeDataGridViewTextBoxColumn
             // 
@@ -305,6 +273,34 @@
             this.nowLevelDataGridViewTextBoxColumn.Name = "nowLevelDataGridViewTextBoxColumn";
             this.nowLevelDataGridViewTextBoxColumn.ReadOnly = true;
             // 
+            // dataBindingSource
+            // 
+            this.dataBindingSource.DataSource = typeof(wLib.DB.WB_ISUALERTVIEW_VO);
+            // 
+            // process_timer
+            // 
+            this.process_timer.Interval = 1000;
+            this.process_timer.Tick += new System.EventHandler(this.On_Process_Timer);
+            // 
+            // bottomPanel
+            // 
+            this.bottomPanel.Controls.Add(this.progressBar);
+            this.bottomPanel.Dock = System.Windows.Forms.DockStyle.Bottom;
+            this.bottomPanel.Location = new System.Drawing.Point(5, 385);
+            this.bottomPanel.Name = "bottomPanel";
+            this.bottomPanel.Padding = new System.Windows.Forms.Padding(3);
+            this.bottomPanel.Size = new System.Drawing.Size(390, 10);
+            this.bottomPanel.TabIndex = 2;
+            // 
+            // progressBar
+            // 
+            this.progressBar.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.progressBar.Location = new System.Drawing.Point(3, 3);
+            this.progressBar.Maximum = 60;
+            this.progressBar.Name = "progressBar";
+            this.progressBar.Size = new System.Drawing.Size(384, 4);
+            this.progressBar.TabIndex = 0;
+            // 
             // mainPage
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -327,10 +323,9 @@
             this.TopPanel.ResumeLayout(false);
             this.TopPanel.PerformLayout();
             this.runPanel.ResumeLayout(false);
-            ((System.ComponentModel.ISupportInitialize)(this.groupDataGridView)).EndInit();
-            this.bottomPanel.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)(this.dataGridView)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.dataBindingSource)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.dataBindingSource_group)).EndInit();
+            this.bottomPanel.ResumeLayout(false);
             this.ResumeLayout(false);
 
         }
@@ -344,8 +339,7 @@
         private System.Windows.Forms.ComboBox runInterval;
         private System.Windows.Forms.RadioButton runMode_auto;
         private System.Windows.Forms.TableLayoutPanel runPanel;
-        private System.Windows.Forms.DataGridView groupDataGridView;
-        private System.Windows.Forms.BindingSource dataBindingSource_group;
+        private System.Windows.Forms.DataGridView dataGridView;
         private System.Windows.Forms.Timer process_timer;
         private System.Windows.Forms.Panel bottomPanel;
         private System.Windows.Forms.ProgressBar progressBar;

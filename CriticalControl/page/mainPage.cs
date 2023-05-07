@@ -70,29 +70,12 @@ namespace CriticalControl.page
 
         private void mainPage_FormClosing(object sender, FormClosingEventArgs e)
         {
-
+            process_timer.Stop();
         }
 
         private void mainPage_FormClosed(object sender, FormClosedEventArgs e)
         {
-            run_conf.ReadConfig();
-            {
-                // 실행 모드
-                runMode_auto.Checked = (run_conf.run_mode == true) ? true : false;
-                runMode_manual.Checked = !(run_conf.run_mode == true) ? true : false;
 
-                // 실행 주기
-                foreach (ComboBoxItem item in runInterval.Items)
-                {
-                    if (run_conf.run_interval == Convert.ToInt32(item.Tag))
-                    {
-                        runInterval.SelectedItem = item;
-                        break;
-                    }
-                }
-
-                bottomPanel.Visible = (run_conf.run_visible == true) ? true : false;
-            }
         }
 
         void ReadConfig()
@@ -169,7 +152,7 @@ namespace CriticalControl.page
             {
                 // 자동 모드
                 runInterval.Enabled = true;
-                runPanel.BackColor = Color.Transparent;
+                TopPanel.BackColor = Color.Transparent;
                 progressBar.Value = progressBar.Minimum;
                 process_time = new DateTime();
                 process_timer.Start();
@@ -178,7 +161,7 @@ namespace CriticalControl.page
             {
                 // 수동 모드
                 runInterval.Enabled = false;
-                runPanel.BackColor = Color.Red;
+                TopPanel.BackColor = Color.Red;
                 progressBar.Value = progressBar.Minimum;
                 runButton.Text = "수 동 실 행";
                 process_timer.Stop();

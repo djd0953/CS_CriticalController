@@ -179,8 +179,8 @@ namespace CriticalControl
             else if (button == settingButton_device)
             {
                 // 장치 페이지
-                //LoadPage(new page.settingPage_device());
-                //settingButton.BackColor = Color.LightSteelBlue;
+                LoadPage(new page.settingPage_device());
+                settingButton.BackColor = Color.LightSteelBlue;
             }
             else settingButton.BackColor = Color.Transparent;
 

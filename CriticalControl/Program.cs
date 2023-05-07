@@ -77,7 +77,7 @@ namespace CriticalControl
 
                                 foreach (WB_SMSUSER_VO vo in sms_list)
                                 {
-                                    new SendSMS(vo, lv);
+                                    new SendSMS(vo.Phone, lv);
                                 }
                             }
                         }
