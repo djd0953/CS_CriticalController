@@ -84,7 +84,6 @@ namespace CriticalControl.page
             {
                 try
                 {
-                    List<string> gbCode = new List<string>();
                     using (MYSQL_T mysql = new MYSQL_T(db_local_conf))
                     {
                         if (table_conf.wb_used == true)
@@ -98,58 +97,6 @@ namespace CriticalControl.page
                             new WB_PARKSMSMENT_DAO(mysql).Create();
                             new WB_PARKCARNOW_DAO(mysql).Create();
                             new WB_PARKSMSLIST_DAO(mysql).Create();
-                        }
-
-                        if (cr_conf.ndms_used == true) 
-                        {
-                            WB_EQUIP_DAO dao = new WB_EQUIP_DAO(mysql);
-                            List<WB_EQUIP_VO> equip_vo = dao.Select().ToList();
-                            foreach (var vo in equip_vo)
-                            {
-                                if (vo.DsCode.Length != 10) continue;
-                                if (gbCode.Contains(vo.DsCode.Substring(5, 1)) == true) continue;
-
-                                gbCode.Add(vo.DsCode.Substring(5, 1));
-                            }
-                        }
-
-                    }
-
-                    using (MYSQL_T ndms_sql = new MYSQL_T(db_ndms_conf))
-                    {
-                        if (cr_conf.ndms_used == true)
-                        {
-                            new NDMS_ALMORD_DAO(ndms_sql).CREATE();
-
-                            foreach (string s in gbCode)
-                            {
-                                switch (s)
-                                {
-                                    case "0":
-                                    case "1":
-                                    case "2":
-                                        new NDMS_THOLD_DAO(ndms_sql, "TCM_COU_DD_THOLD").CREATE();
-                                        break;
-
-                                    case "3":
-                                        new NDMS_THOLD_DAO(ndms_sql, "TCM_COU_DR_THOLD").CREATE();
-                                        break;
-
-                                    case "4":
-                                        new NDMS_THOLD_DAO(ndms_sql, "TCM_COU_SS_THOLD").CREATE();
-                                        break;
-
-                                    case "5":
-                                    case "6":
-                                    case "7":
-                                        new NDMS_THOLD_DAO(ndms_sql, "TCM_COU_FC_THOLD").CREATE();
-                                        break;
-
-                                    case "z":
-                                    default:
-                                        continue;
-                                }
-                            }
                         }
                     }
                 }
@@ -1232,33 +1179,36 @@ namespace CriticalControl.page
                         {
                             using (MYSQL_T ndms_sql = new MYSQL_T(db_ndms_conf))
                             {
-                                WB_EQUIP_DAO equip_dao = new WB_EQUIP_DAO(mysql);
+                                NDMS_EQUIP_DAO equip_dao = new NDMS_EQUIP_DAO(ndms_sql);
                                 NDMS_ALMORD_DAO ndms_dao = new NDMS_ALMORD_DAO(ndms_sql);
 
                                 foreach (var vo in group_list)
                                 {
                                     if (string.IsNullOrEmpty(vo.retreat))
                                     {
-                                        WB_EQUIP_VO equip_vo = equip_dao.Select($"CD_DIST_OBSV = '{vo.retreat}'").FirstOrDefault();
-                                        if (equip_vo != null && equip_vo.DsCode.Length == 10)
+                                        NDMS_EQUIP_VO equip_vo = equip_dao.Select($"CD_DIST_OBSV = '{vo.retreat}'").FirstOrDefault();
+                                        if (equip_vo != null && equip_vo.Dscode.Length == 10)
                                         {
+
                                             NDMS_ALMORD_VO ndms_vo = new NDMS_ALMORD_VO()
                                             {
-                                                Dscode = equip_vo.DsCode,
+                                                Dscode = equip_vo.Dscode,
                                                 Cd_dist_obsv = equip_vo.Cd_dist_obsv,
                                                 AlmCode = $"0{vo.NowLevel}",
                                                 Almde = DateTime.Now.ToString("yyyyMMddHHmmss"),
                                                 Almgb = "1",
-                                                Almnote = null
+                                                Almnote = null,
+                                                table_name = equip_vo.gb_obsv != "21" ? "TCM_COU_DNGR_ALMORD" : "TCM_FLUD_ALMORD",
+                                                table_comment = equip_vo.gb_obsv != "21" ? "위험경보발령 정보" : "침수경보발령 정보"
                                             };
+
                                             ndms_dao.EndBeforeAlmord(ndms_vo);
-                                            ndms_dao.INSERT(ndms_vo);
+                                            ndms_dao.Insert(ndms_vo);
                                         }
                                     }
                                 }
                             }
                         }
-
                     }
 
                     // UI 업데이트
@@ -1413,7 +1363,7 @@ namespace CriticalControl.page
                                     Use_YN = vo.Use[i].ToLower() == "on" ? "Y" : "N"
                                 };
 
-                                ndms_dao.INSERT(ndms_vo);
+                                ndms_dao.Insert(ndms_vo);
                             }
                         }
                     }
