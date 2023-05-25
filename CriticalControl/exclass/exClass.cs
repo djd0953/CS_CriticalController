@@ -846,6 +846,53 @@ namespace CriticalControl.page
                                 WB_ISUALERT_DAO alt_dao = new WB_ISUALERT_DAO(mysql);
                                 alt_dao.Update($"NowType = {vo.NowType}", where);
                                 alt_dao.Update($"ChkCount = {vo.ChkCount}", where);
+
+                                // NDMS 정보 전송
+                                if (cr_conf.ndms_used == true)
+                                {
+                                    using (MYSQL_T ndms_sql = new MYSQL_T(db_ndms_conf))
+                                    {
+                                        NDMS_EQUIP_DAO equip_dao = new NDMS_EQUIP_DAO(ndms_sql);
+                                        NDMS_ALMORD_DAO ndms_dao = new NDMS_ALMORD_DAO(ndms_sql);
+                                        NDMS_EQUIP_VO equip_vo = equip_dao.Select($"CD_DIST_OBSV = '{vo.Cd_dist_obsv}'").FirstOrDefault();
+
+                                        try
+                                        {
+                                            if (equip_vo != null && equip_vo.Dscode.Length == 10)
+                                            {
+                                                NDMS_ALMORD_VO ndms_vo = new NDMS_ALMORD_VO()
+                                                {
+                                                    Dscode = equip_vo.Dscode,
+                                                    Cd_dist_obsv = equip_vo.Cd_dist_obsv,
+                                                    AlmCode = $"0{vo.NowType}",
+                                                    Almde = DateTime.Now.ToString("yyyyMMddHHmmss"),
+                                                    Almgb = "1",
+                                                    Almnote = null,
+                                                    table_name = equip_vo.gb_obsv != "21" ? "TCM_COU_DNGR_ALMORD" : "TCM_FLUD_ALMORD",
+                                                    table_comment = equip_vo.gb_obsv != "21" ? "위험경보발령 정보" : "침수경보발령 정보"
+                                                };
+                                                ndms_dao.EndBeforeAlmord(ndms_vo);
+
+                                                if (vo.NowType != 0 && vo.Use[vo.NowType].ToLower() == "on" && vo.ChkCount == 0)
+                                                {
+                                                    ndms_dao.Insert(ndms_vo);
+                                                }
+                                            }
+                                            else if (equip_vo == null)
+                                            {
+                                                throw new Exception($"NDMS DB의 WB_EQUIP에 등록된 장비가 없습니다.(장비번호: {vo.Cd_dist_obsv})");
+                                            }
+                                            else if (string.IsNullOrEmpty(equip_vo.Dscode) || equip_vo.Dscode.Length != 10)
+                                            {
+                                                throw new Exception($"장비의 DSCode가 잘못되었습니다.({(string.IsNullOrEmpty(equip_vo.Dscode) ? "NULL" : equip_vo.Dscode)})");
+                                            }
+                                        }
+                                        catch (Exception ex)
+                                        {
+                                            log.Warning($"{GetType()}::{ex.Message}");
+                                        }
+                                    }
+                                }
                             }
                         }
 
@@ -940,7 +987,6 @@ namespace CriticalControl.page
                             // Group별 Alert List의 Level 중 가장 높은 Level을 현재 상황으로 판단
                             int level = 0;
                             string occur = null;
-                            string retreatNum = null;
                             foreach (string AltCode in vo.AltCodeList)
                             {
                                 if (alert_list.Exists(x => x.AltCode == AltCode))
@@ -955,15 +1001,14 @@ namespace CriticalControl.page
                                         // 최대 Level의 계측구분
                                         occur = alert_list_vo.EquType;
                                         //if (occur.ToLower() == "rain") occur += $"{alert_list_vo.RainTime}";
-
-                                        // NDMS 계측기 확인
-                                        retreatNum = alert_list_vo.Cd_dist_obsv;
                                     }
                                 }
                             }
 
                             // List에 등록하기 위해 DAO 변수 선언
                             WB_ISULIST_DAO list_dao = new WB_ISULIST_DAO(mysql);
+                            // 장비 동작을 위한 클레스 선언
+                            ExcuteEquip excute = new ExcuteEquip();
 
                             // 평시 상황 || 프로그램이 껐다 켜졌을 때 상태 유지
                             if ((level == vo.NowLevel && level == 0) || (level == vo.NowLevel && vo.IsuCode == null))
@@ -978,7 +1023,7 @@ namespace CriticalControl.page
                                     list_vo = list_dao.Select($"IsuCode = {vo.IsuCode}").FirstOrDefault();
                                     if (list_vo == null || list_vo.IStatus.ToLower() != "start")
                                     {
-                                        return;
+                                        continue;
                                     }
                                 }
                                 else // level > vo.NowLevel (현재레벨 > 기존레벨)
@@ -1011,7 +1056,6 @@ namespace CriticalControl.page
                                     // Temp Column IsuCode에 wb_isulist의 IsuCode를 변수에 등록
                                     string query = "SELECT LAST_INSERT_ID() AS idx";
                                     vo.IsuCode = mysql.ExecuteScalar(query).ToString();
-                                    vo.retreat = retreatNum;
                                 }
 
                                 log.Info($"[{vo.GName}]경보 {level}단계 경보 발령");
@@ -1035,14 +1079,18 @@ namespace CriticalControl.page
                                 // Level별 등록된 장비에 경보 발령!
                                 if (vo.Auto[level].ToLower().Equals("on") || level == vo.NowLevel) // Auto 1 ~ 4가 "on"일 경우 Equip List 작동
                                 {
-                                    if (vo.EquipList != null)
+                                    if (vo.EquipList != null) // Auto가 "on"이지만 "Equip"에 장비 목록이 등록되지 않은 경우를 제외
                                     {
+                                        // 장비 경보발령으로 인한 작동 명령
                                         foreach (string Cd_dist_obsv in vo.EquipList[level])
                                         {
                                             WB_EQUIP_VO equip_vo = equip_list.Find(x => x.Cd_dist_obsv == Cd_dist_obsv);
+                                            
                                             if (equip_vo != null) // wb_alertgroup Equip에는 있지만 wb_equip에 등록이 안돼있거나, USE_YN이 0인 경우
                                             {
-                                                new ExcuteEquip(equip_vo, level);
+                                                if (cr_conf.ndms_used == true && occur.ToLower() == "flood") excute.useNdms(equip_vo.DsCode);
+                                                excute.setEquip(equip_vo, level);
+                                                excute.Start();
                                             }
                                         }
 
@@ -1075,7 +1123,7 @@ namespace CriticalControl.page
                                 log.Info($"[{vo.GName}]경보 {(level != 0 ? $"{level}단계" : "평시")}로 경보 하향");
 
                                 // 경보 하향 발령이 필요하므로 기존 발령중인 경보 List End처리
-                                if (vo.IsuCode != null)
+                                if (vo.IsuCode != null) // 프로그램이 막 실행됐거나, 기존에 울렸던 경보가 없을 경우를 제외. DB상 기존경보 End 처리
                                 {
                                     list_dao.Update($"IsuEndAuto = '{(level != 0 ? "advance" : "end")}'", $"IsuCode = {vo.IsuCode}");
                                     list_dao.Update("IsuEndDate = NOW()", $"IsuCode = {vo.IsuCode}");
@@ -1084,12 +1132,15 @@ namespace CriticalControl.page
 
                                 if (level == 0) // Level이 0일 경우 전체 장비 발령 중 작동에 대해 해제 명령
                                 {
+                                    // 장비 경보발령으로 인한 작동 해제 명령
                                     foreach (string Cd_dist_obsv in vo.EquipList[vo.NowLevel])
                                     {
                                         WB_EQUIP_VO equip_vo = equip_list.Find(x => x.Cd_dist_obsv == Cd_dist_obsv);
-                                        if (equip_vo != null) // wb_alertgroup Equip에는 있지만 wb_equip에 등록이 안돼있거나, USE_YN이 0인 경우
+                                        if (equip_vo != null) // wb_alertgroup Equip에는 있지만 wb_equip에 등록이 안돼있거나, USE_YN이 0인 경우를 제외함
                                         {
-                                            new ExcuteEquip(equip_vo, level);
+                                            if (cr_conf.ndms_used == true) excute.useNdms(equip_vo.DsCode);
+                                            excute.setEquip(equip_vo, level);
+                                            excute.Start();
                                         }
                                     }
 
@@ -1117,31 +1168,24 @@ namespace CriticalControl.page
                                     string query = "SELECT LAST_INSERT_ID() AS idx";
                                     vo.IsuCode = mysql.ExecuteScalar(query).ToString();
 
+                                    // 장비 하향 명령
                                     foreach (string Cd_dist_obsv in vo.EquipList[vo.NowLevel])
                                     {
                                         WB_EQUIP_VO equip_vo = equip_list.Find(x => x.Cd_dist_obsv == Cd_dist_obsv);
 
                                         if (equip_vo != null) // wb_alertgroup Equip에는 있지만 wb_equip에 등록이 안돼있거나, USE_YN이 0인 경우
                                         {
-                                            ExcuteEquip exec = new ExcuteEquip(equip_vo, level, false);
-                                            switch (equip_vo.gb_obsv)
+                                            excute.setEquip(equip_vo, level);
+                                            excute.doBroadCasting(false);
+                                            excute.doGateControl(false);
+
+                                            if (equip_vo.gb_obsv == "20" && vo.EquipList[level].Exists(x => x != Cd_dist_obsv))
                                             {
-                                                case "18":
-                                                    break;
-
-                                                case "19":
-                                                    exec.Alert();
-                                                    break;
-
-                                                case "20":
-                                                    // 기존 상황에 Close 명령을 받은 차단기가 있고 현재 상황에 차단기 작동 여부가 해제돼있을 경우 차단기 Open
-                                                    if (vo.EquipList[level].Exists(x => x != Cd_dist_obsv))
-                                                    {
-                                                        exec.doGateControl(true, false);
-                                                        exec.Alert();
-                                                    }
-                                                    break;
+                                                if (cr_conf.ndms_used == true) excute.useNdms(equip_vo.DsCode);
+                                                excute.doGateControl(true, false);
                                             }
+
+                                            excute.Start();
                                         }
                                     }
 
@@ -1171,42 +1215,6 @@ namespace CriticalControl.page
                                 };
 
                                 send_dao.Insert(send_vo);
-                            }
-                        }
-
-                        // NDMS 정보 전송
-                        if (cr_conf.ndms_used == true)
-                        {
-                            using (MYSQL_T ndms_sql = new MYSQL_T(db_ndms_conf))
-                            {
-                                NDMS_EQUIP_DAO equip_dao = new NDMS_EQUIP_DAO(ndms_sql);
-                                NDMS_ALMORD_DAO ndms_dao = new NDMS_ALMORD_DAO(ndms_sql);
-
-                                foreach (var vo in group_list)
-                                {
-                                    if (string.IsNullOrEmpty(vo.retreat))
-                                    {
-                                        NDMS_EQUIP_VO equip_vo = equip_dao.Select($"CD_DIST_OBSV = '{vo.retreat}'").FirstOrDefault();
-                                        if (equip_vo != null && equip_vo.Dscode.Length == 10)
-                                        {
-
-                                            NDMS_ALMORD_VO ndms_vo = new NDMS_ALMORD_VO()
-                                            {
-                                                Dscode = equip_vo.Dscode,
-                                                Cd_dist_obsv = equip_vo.Cd_dist_obsv,
-                                                AlmCode = $"0{vo.NowLevel}",
-                                                Almde = DateTime.Now.ToString("yyyyMMddHHmmss"),
-                                                Almgb = "1",
-                                                Almnote = null,
-                                                table_name = equip_vo.gb_obsv != "21" ? "TCM_COU_DNGR_ALMORD" : "TCM_FLUD_ALMORD",
-                                                table_comment = equip_vo.gb_obsv != "21" ? "위험경보발령 정보" : "침수경보발령 정보"
-                                            };
-
-                                            ndms_dao.EndBeforeAlmord(ndms_vo);
-                                            ndms_dao.Insert(ndms_vo);
-                                        }
-                                    }
-                                }
                             }
                         }
                     }
@@ -1322,7 +1330,7 @@ namespace CriticalControl.page
                                 continue;
                         }
 
-                        using (MYSQL_T ndms_sql = new MYSQL_T()) 
+                        using (MYSQL_T ndms_sql = new MYSQL_T(db_ndms_conf)) 
                         {
                             NDMS_THOLD_DAO ndms_dao = new NDMS_THOLD_DAO(ndms_sql);
                             for (int i = 1; i <= 4; i++)
@@ -1343,8 +1351,8 @@ namespace CriticalControl.page
                                         break;
 
                                     case "21":
-                                        thold_value = null;
-                                        break;
+                                        //thold_value = null;
+                                        //break;
 
                                     default:
                                         continue;

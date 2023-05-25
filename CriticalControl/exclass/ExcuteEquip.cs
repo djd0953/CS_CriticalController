@@ -11,62 +11,87 @@ namespace CriticalControl
     public class ExcuteEquip
     {
         DB_CONF db_local_conf = new DB_CONF("LOCAL");
+        DB_CONF db_ndms_conf = new DB_CONF("NDMS");
 
         public WB_ISUMENT_VO ment_vo = new WB_ISUMENT_VO();
         public WB_EQUIP_VO vo = new WB_EQUIP_VO();
 
+        // 레벨
         public int level;
+
+        // 방송, 차단기 동작 여부
         public bool broadCasting;
         public bool gateControl;
         public bool gateClose;
 
-        public ExcuteEquip(WB_EQUIP_VO vo, int level, bool starting = true)
-        {
-            //TODO: vo.Data에 해당 장비를 동작시킬지 True or False를 String으로 받아 실행 or (방송, 차단기) 동작 여부를 변수로 받아 실행
-            this.level = level;
-            this.vo = vo;
+        // NDMS 설정
+        public string DsCode;
+        public bool sendNdms = false;
 
+        public ExcuteEquip()
+        {
             doBroadCasting(true);
             doGateControl(true, true);
-
-            if (starting) Alert();
         }
 
+        /// <summary>
+        /// 단계별 작동할 장비 세팅
+        /// </summary>
+        /// <param name="vo">작동할 장비 VO</param>
+        /// <param name="level">해당 Level</param>
+        public void setEquip(WB_EQUIP_VO vo, int level)
+        {
+            this.level = level;
+            this.vo = vo;
+        }
+
+        /// <summary>
+        /// 방송 실행 여부
+        /// </summary>
+        /// <param name="broadCast">true=작동</param>
         public void doBroadCasting(bool broadCast)
         {
             this.broadCasting = broadCast;
         }
 
+        /// <summary>
+        /// 차단기 작동 여부
+        /// </summary>
+        /// <param name="gateControl">true=작동</param>
+        /// <param name="gateClose">true=Close</param>
         public void doGateControl(bool gateControl, bool gateClose = true)
         {
             this.gateControl = gateControl;
             this.gateClose = gateClose;
         }
 
-        public void Alert()
+        /// <summary>
+        /// NDMS 연동 여부
+        /// </summary>
+        /// <param name="DsCode">DsCode(필수)</param>
+        public void useNdms(string DsCode)
+        {
+            this.DsCode = DsCode;
+            sendNdms = true;
+        }
+
+        public void Start()
         {
             try
             {
                 using (MYSQL_T mysql = new MYSQL_T(db_local_conf)) 
                 { 
                     WB_ISUMENT_DAO ment_dao = new WB_ISUMENT_DAO(mysql);
-                    ment_dao.Create();
-
-                    ment_vo = ment_dao.Select("MentCode = 1").FirstOrDefault();
-                    if (ment_vo == null) 
-                    {
-                        ment_dao.Insert("INSERT INTO wb_isument (MentCode) VALUES (1)");
-                        ment_vo = ment_dao.Select("MentCode = 1").FirstOrDefault();
-                    }
+                    ment_vo = ment_dao.Select();
                 }
 
                 switch(vo.gb_obsv)
                 {
-                    case "18":
+                    case "17":
                         BroadCast();
                         break;
 
-                    case "19":
+                    case "18":
                         Display();
                         break;
 
@@ -109,6 +134,7 @@ namespace CriticalControl
 
         public void Display()
         {
+            List<string> Msg_boardList = new List<string>();
             using (MYSQL_T mysql = new MYSQL_T(db_local_conf))
             {
                 WB_DISSEND_DAO dissend_dao = new WB_DISSEND_DAO(mysql);
@@ -120,8 +146,46 @@ namespace CriticalControl
                     BStatus = "start",
                     RegDate = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")
                 };
-
                 dissend_dao.Insert(dissend_vo);
+
+                if (level > 0)
+                {
+                    string[] DisCodeList = ment_vo.DisMent[level].Split(',');
+                    WB_DISPLAY_DAO dis_dao = new WB_DISPLAY_DAO(mysql);
+                    foreach (var DisCode in DisCodeList)
+                    {
+                        WB_DISPLAY_VO dis_vo = dis_dao.Select($"DisCode = '{DisCode}'").FirstOrDefault();
+                        string board_message = System.Text.RegularExpressions.Regex.Replace(dis_vo.HtmlData, @"<(.|\n)*?>", string.Empty);
+                        board_message = board_message.Replace("&nbsp;", string.Empty);
+
+                        Msg_boardList.Add(board_message);
+                    }
+                }
+            }
+
+            if (sendNdms == false)
+            {
+                return;
+            }
+
+            using (MYSQL_T mysql = new MYSQL_T(db_ndms_conf))
+            {
+                NDMS_BOARD_DAO dao = new NDMS_BOARD_DAO(mysql);
+                foreach (string Msg_board in Msg_boardList)
+                {
+                    NDMS_BOARD_VO display_vo = new NDMS_BOARD_VO()
+                    {
+                        FlCode = DsCode,
+                        Cd_dist_board = vo.Cd_dist_obsv,
+                        Nm_dist_board = vo.Nm_dist_obsv,
+                        Comm_sttus = vo.LastStatus.ToLower() == "ok" ? "1" : "0",
+                        Msg_board = Msg_board,
+                        Lat = vo.Lat,
+                        Lon = vo.Lon,
+                        Use_YN = vo.Use_YN
+                    };
+                    dao.Insert(display_vo);
+                }
             }
         }
 
@@ -145,6 +209,30 @@ namespace CriticalControl
 
                 gate_dao.Insert(gate_vo);
             }
+
+            if (sendNdms == false) 
+            {
+                return;
+            }
+
+            using (MYSQL_T mysql = new MYSQL_T(db_ndms_conf))
+            {
+                NDMS_INTRCP_DAO gate_dao = new NDMS_INTRCP_DAO(mysql);
+                NDMS_INTRCP_VO gate_vo = new NDMS_INTRCP_VO()
+                {
+                    FlCode = DsCode,
+                    Cd_dist_intrcp = vo.Cd_dist_obsv,
+                    Nm_dist_intrcp = vo.Nm_dist_obsv,
+                    Gb_intrcp = vo.Cd_dist_obsv.Substring(1, 1) == "0" ? "1" : "2",
+                    mod_intrcp = "2",
+                    Comm_sttus = vo.LastStatus.ToLower() == "ok" ? "1" : "0",
+                    intrcp_sttus = level > 0 && gateClose ? "2" : "1",
+                    Lat = vo.Lat,
+                    Lon = vo.Lon,
+                    Use_YN = vo.Use_YN
+                };
+                gate_dao.Insert(gate_vo);
+            }
         }
     }
 
@@ -162,10 +250,10 @@ namespace CriticalControl
             this.level = level;
             this.phone = phone;
 
-            SMS();
+            Start();
         }
 
-        public void SMS()
+        public void Start()
         {
             if (level < 1)
             {
@@ -175,14 +263,7 @@ namespace CriticalControl
             using (MYSQL_T mysql = new MYSQL_T(db_local_conf))
             {
                 WB_ISUMENT_DAO ment_dao = new WB_ISUMENT_DAO(mysql);
-                ment_dao.Create();
-
-                ment_vo = ment_dao.Select("MentCode = 1").FirstOrDefault();
-                if (ment_vo == null)
-                {
-                    ment_dao.Insert("INSERT INTO wb_isument (MentCode) VALUES (1)");
-                    ment_vo = ment_dao.Select("MentCode = 1").FirstOrDefault();
-                }
+                ment_vo = ment_dao.Select();
 
                 WB_SENDMESSAGE_DAO smssend_dao = new WB_SENDMESSAGE_DAO(mysql);
                 WB_SENDMESSAGE_VO smssend_vo = new WB_SENDMESSAGE_VO()

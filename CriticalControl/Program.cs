@@ -64,10 +64,12 @@ namespace CriticalControl
                         {
                             WB_EQUIP_DAO equip_dao = new WB_EQUIP_DAO(mysql);
                             IEnumerable<WB_EQUIP_VO> equip_list = equip_dao.Select();
+                            ExcuteEquip excute = new ExcuteEquip();
 
                             foreach(WB_EQUIP_VO vo in equip_list)
                             {
-                                new ExcuteEquip(vo, lv);
+                                excute.setEquip(vo, lv);
+                                excute.Start();
                             }
 
                             if (smsGCode != null)

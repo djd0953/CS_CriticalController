@@ -65,7 +65,6 @@
     <Compile Include="exclass\exClass.Designer.cs">
       <DependentUpon>exClass.cs</DependentUpon>
     </Compile>
-    <Compile Include="exclass\SendNdmsEquip.cs" />
     <Compile Include="exclass\ExcuteEquip.cs" />
     <Compile Include="mainForm.cs">
       <SubType>Form</SubType>
